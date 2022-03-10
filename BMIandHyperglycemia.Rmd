@@ -1,0 +1,172 @@
+---
+title: 'Can BMI predict high glucose levels?'
+author: "by Jamielee Jimenez"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+      toc: TRUE
+      toc_depth: 4
+      toc_float: TRUE
+always_allow_html: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE)
+library(tidyverse)
+library(pander)
+library(DT)
+### p.value.string v2
+# by Reid Ginoza
+p.value.string = function(p.value){
+  p.value <- round(p.value, digits=4)
+  if (p.value == 0) {
+    return("p < 0.0001")
+  } else {
+    return(paste0("p = ", format(p.value, scientific = F)))
+  }
+}
+```
+
+Diabetes and obesity are two of America's greatest health issues in the 21st century. Several studies have found that roughly 50% of the United States population is obese or morbidly obese and that around 13% of adults are diabetic. Scientists have examined the potential relationship between these two variables and have concluded that obesity can lead to diabetes if not treated. But, is it possible to predict hyperglycemia, the main symptom of diabetes, from glucose and Body Mass Index levels? By looking at female patient data from the National Institute of Diabetes and Digestive and Kidney Diseases, we may have the ability to construct a regression model and determine predictability and correlation. 
+
+The data is as follows: 
+
+```{r include = TRUE}
+# enter data
+x <- c(33.6,	26.6,	23.3,	28.1,	43.1,	25.6,	31,	35.3,	30.5,	0,	37.6,	38,	27.1,	30.1,	25.8,	30,	45.8,	29.6,	43.3,	34.6,	39.3,	35.4,	39.8,	29,	36.6,	31.1,	39.4,	23.2,	22.2,	34.1,	36,	31.6,	24.8,	19.9,	27.6,	24,	33.2,	32.9,	38.2,	37.1,	34,	40.2,	22.7,	45.4,	27.4,	42,	29.7,	28,	39.1,	0,	19.4,	24.2,	24.4,	33.7,	34.7,	23,	37.7,	46.8,	40.5,	41.5,	0,	32.9,	25,	25.4,	32.8,	29,	32.5,	42.7,	19.6,	28.9,	32.9,	28.6,	43.4,	35.1,	32,	24.7,	32.6,	37.7,	43.2,	25,	22.4,	0,	29.3,	24.6,	48.8,	32.4,	36.6,	38.5,	37.1,	26.5,	19.1,	32,	46.7,	23.8,	24.7,	33.9,	31.6,	20.4,	28.7,	49.7)
+
+y <- c(148,	85,	183,	89,	137,	116,	78,	115,	197,	125,	110,	168,	139,	189,	166,	100,	118,	107,	103,	115,	126,	99,	196,	119,	143,	125,	147,	97,	145,	117,	109,	158,	88,	92,	122,	103,	138,	102,	90,	111,	180,	133,	106,	171,	159,	180,	146,	71,	103,	105,	103,	101,	88,	176,	150,	73,	187,	100,	146,	105,	84,	133,	44,	141,	114,	99,	109,	109,	95,	146,	100,	139,	126,	129,	79,	0,	62,	95,	131,	112,	113,	74,	83,	101,	137,	110,	106,	100,	136,	107,	80,	123,	81,	134,	142,	144,	92,	71,	93,	122)
+
+# put together as tibble
+one <- tibble(x, y)
+datatable(one)
+```
+## Description of Data
+The data used for this analysis originates from the National Institute of Diabetes and Digestive and Kidney Diseases. The patients are all females at least 21 years old of Pima Indian heritage. To simplify prediction capabilities, two variables are chosen from the options provided in the data set: BMI and Glucose. 
+
+Additionally, in order to constrict the data to a manageable size, only the first 100 rows of data for BMI and Glucose were selected out of over 700 rows. 
+
+(Source: https://www.kaggle.com/shantanudhakadd/diabetes-dataset-for-beginners)
+
+### Variables
+The variables from this data set include BMI for Body Mass Index as the predictor or x, and Glucose as the outcome or y. 
+
+**BMI, Body Mass Index**
+
+This is the most common measure of obesity and has categories of underweight, normal, overweight, obese and morbidly obese. More specifically, a BMI (kg/m² units) of less than 18.5 is underweight, 18.5-24.9 is normal, 25.0-29.9 is overweight, 30.0-39.9 is obese, and anything beyond 40.0 is morbidly obese. The range for this data is: 0 to 49.7 kg/m². 
+
+**Glucose, blood sugar**
+
+This measures glycemia or the amount of sugar found in blood. In hyperglycemia, sugar is found in excess levels while in hypoglycemia, sugar is in deficit. Fasting glucose (mg/dL units) in the range of 80-100 is normal, 101-125 is impaired and beyond 126 is diabetic. The range for this data is: 0 to 197 mg/dL. 
+
+It is important to note that there are several outliers in this data set in the form of 0's as neither a BMI nor a glucose level of 0 is possible in a living human body. 
+
+### Summary Statistics
+Next, we will review summary statistics. 
+
+```{r include = FALSE}
+# comment
+means <- summarize(one, mean_x = mean(x, na.rm=TRUE), sd_x = sd(x, na.rm=TRUE), mean_y = mean(y, na.rm=TRUE), sd_y = sd(y, na.rm=TRUE))
+```
+The total number of observations for BMI and Glucose each is `r count(one)`. 
+
+The mean BMI is `r round(means$mean_x, 2)` kg/m² with a standard deviation of `r round(means$sd_x, 2)`. The BMI Min, 1st Quartile, Median, Mean, 3rd Quartile, and Max, respectively are as follows: `r summary(x)`. 
+
+The mean glucose level is `r round(means$mean_y, 2)` mg/dL with a standard deviation of `r round(means$sd_y, 2)`. The Glucose Min, 1st Quartile, Median, Mean, 3rd Quartile, and Max, respectively are as follows: `r summary(y)`. 
+
+## Simple Linear Regression
+Now, we will construct and interpret the regression model. 
+
+```{r include = FALSE}
+one_model <- lm(y ~ x, data = one)
+one_summary <- summary(one_model)
+one_coef <- coefficients(one_model)
+one_ci <- as_tibble(confint(one_model, level=0.95))
+```
+
+Per the data used, the simple linear regression model will be:
+\[ \hat{Y} = `r round(one_coef[[1]], digits=2)` + `r round(one_coef[[2]], digits=2)`X \]
+
+This indicates that for an increase of 1 kg/m² in BMI, we expect the glucose level to also rise by `r round(one_coef[[2]], digits=2)` mg/dL. The 95% confidence interval for this relationship is (`r round(one_ci$"2.5 %"[2], digits = 2)`, `r round(one_ci$"97.5 %"[2], digits = 2)`).
+
+Despite this being impossible in a living body, hypothetically, if a person had 0 BMI, we would expect the glucose level to be `r round(one_coef[[1]], digits=2)` mg/dL. 
+
+### Is BMI a significant predictor of hyperglycemia? 
+With this information, we can now determine if glucose level is significantly predicted by BMI. 
+
+```{r include = FALSE}
+one_t <- as_tibble(one_summary[[4]])
+```
+
+**Hypotheses**
+
+&emsp;&emsp; $H_0: \ \beta_1 = 0$ <br>
+&emsp;&emsp; $H_1: \ \beta_1 \ne 0$
+
+**Test Statistic**
+
+&emsp;&emsp; $t_0 = `r round(one_t$"t value"[2], digits=2)`$.
+
+**P-value**
+
+&emsp;&emsp; $`r p.value.string(one_t$"Pr(>|t|)"[2])`$.
+
+**Rejection Region**
+
+&emsp;&emsp; Reject if $p < \alpha$, where $\alpha=0.05$.
+
+**Conclusion and Interpretation**
+
+Since $`r p.value.string(one_t$"Pr(>|t|)"[2])`$ is less than $\alpha=0.05$, we must reject $H_0$. There is sufficient evidence to suggest that glucose level is predicted by BMI.
+
+### Coefficient of Determination (R²) for the Regression Line
+The Coefficient of Determination, also known as R-Squared, determines the percentage of the variability of Y that can be explained by X and is calculated by the following formula: 
+
+&emsp;&emsp; $$R^2 = \frac{SSReg}{SSTotal}$$
+
+```{r include = FALSE}
+# find predicted values
+one$pred  <- predict(one_model)  
+
+#total SS
+totalSS = sum((y - means$mean_y)^2)
+
+#regression SS
+regSS = sum((one$pred- means$mean_y)^2)
+
+#rsquared
+rsquared = regSS / totalSS
+```
+
+The Regression Sum of Squares (SSReg) is `r round(regSS, 2)`. The Total Sum of Squares is `r format(totalSS, scientific = FALSE)`. Therefore, the coefficient of determination will be `r round(rsquared, 5)`. 
+
+This means that only `r round(rsquared*100, 2)`% of the variability in Glucose levels can be explained by BMI. So, it is likely that a multiple linear regression will be more successful in estimating glucose levels than a simple linear model such as this one. It is also possible that there is another stronger single variable which can be used to predict blood sugar levels.  
+
+### Correlation
+
+```{r include = FALSE}
+# correlation - Pearson
+one_corr <- cor(one$x, one$y, method="pearson")
+
+```
+
+The Pearson correlation between BMI and Glucose is `r round(one_corr, 4)`. This indicates that the two variables have a weak positive linear relationship, meaning that the BMI predictor is not strong when estimating glucose levels. 
+
+### Visualization
+After constructing a model of glucose as a function of BMI and examining prediction significance and the coefficient of determination (R²), we can now look at a scatter plot of the data with the regression line. As seen below, the scatter plot is slightly increasing as BMI increases, which the regression line measured through its slope. However, the plot appears fairly scattered, so there is not a strong correlation between the two variables. The outliers, which likely weakened the model, are also visible in the x and y axes. 
+
+```{r include = TRUE}
+one <- one %>% mutate(pred = predict(one_model))
+one %>% ggplot(aes(x = x, y = y)) +
+  geom_line(aes(y = pred), color = "red", size=1) +
+  geom_point() +
+  geom_text(aes(x = 46, y = 150, label = "Regression Line"), color="red", show.legend = TRUE) +
+  scale_x_continuous(lim = c(0, 50), breaks = seq(min(0), max(200), by = 5), minor_breaks = seq(min(0), max(50), by = 15)) +
+  xlab("BMI (kg/m²)") +
+  ylab("Glucose Level (mg/dL)") +
+  theme_minimal()
+```
+
+
+## Conclusion
+After considering several factors, it can be concluded that there is evidence that BMI is a direct predictor of high glucose levels, and can be used to determine risk for diabetes. However, the regression model generated in this analysis cannot account for the majority of the variability and may not be the best line to use for prediction. While hyperglycemia is not the only indicator of diabetes, it could be the single most accurate sign of the disease. If we included other variables such as skin thickness, age, insulin, and pregnancies, we may be able to develop a multiple linear regression model which more accurately estimates the potential risk for diabetes. 
